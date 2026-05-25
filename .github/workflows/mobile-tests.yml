@@ -62,10 +62,26 @@ jobs:
             curl -L -o apps/Android-NativeDemoApp.apk \
               "https://github.com/webdriverio/native-demo-app/releases/download/${NATIVE_DEMO_APP_VERSION}/android.wdio.native.app.${NATIVE_DEMO_APP_VERSION}.apk"
           fi
-          RESPONSE=$(curl -s -u "$BROWSERSTACK_USERNAME:$BROWSERSTACK_ACCESS_KEY" \
+          # Valida que os secrets estão presentes antes do upload pra
+          # falhar com mensagem clara em vez de "JSON parse error".
+          if [ -z "$BROWSERSTACK_USERNAME" ] || [ -z "$BROWSERSTACK_ACCESS_KEY" ]; then
+            echo "::error::Secrets BROWSERSTACK_USERNAME e/ou BROWSERSTACK_ACCESS_KEY não configurados em Settings > Secrets and variables > Actions"
+            exit 1
+          fi
+
+          HTTP_CODE=$(curl -sS -o /tmp/bs-response.json -w "%{http_code}" \
+            -u "$BROWSERSTACK_USERNAME:$BROWSERSTACK_ACCESS_KEY" \
             -X POST "https://api-cloud.browserstack.com/app-automate/upload" \
             -F "file=@apps/Android-NativeDemoApp.apk")
-          APP_URL=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['app_url'])")
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Upload falhou (HTTP $HTTP_CODE)"
+            echo "Resposta do BrowserStack:"
+            cat /tmp/bs-response.json
+            exit 1
+          fi
+
+          APP_URL=$(python3 -c "import json; print(json.load(open('/tmp/bs-response.json'))['app_url'])")
           # Mascara a URL bs:// nos logs (identifica o build no BS).
           echo "::add-mask::$APP_URL"
           echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
