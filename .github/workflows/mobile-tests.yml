@@ -112,6 +112,13 @@ jobs:
           BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
           BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
           BROWSERSTACK_APP_ANDROID: ${{ needs.upload-android.outputs.app_url || vars.BROWSERSTACK_APP_ANDROID }}
+          # Credenciais de teste do native-demo-app (público). O app não
+          # tem backend real, aceita qualquer string que passe nas
+          # validações de formato. Não são valores sensíveis.
+          TEST_USER_EMAIL: qa@example.com
+          TEST_USER_PASSWORD: Senha12345!
+          TEST_SIGNUP_EMAIL: signup@example.com
+          TEST_SIGNUP_PASSWORD: Senha12345!
       - name: Subir resultados Allure
         if: always()
         uses: actions/upload-artifact@v4
