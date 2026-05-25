@@ -1,0 +1,50 @@
+node_modules/
+
+# Configuração local e segredos
+.env
+.env.local
+.env.*.local
+*.local.json
+secrets.json
+credentials.json
+.npmrc
+
+# Certificados e chaves de assinatura
+*.keystore
+*.jks
+*.pem
+*.cert
+*.crt
+*.key
+*.p12
+*.pfx
+*.mobileprovision
+
+# Artefatos de execução
+allure-results/
+allure-report/
+test/evidence/
+
+# Binários do app (baixados manualmente, não versionados)
+apps/
+
+# Configurações de IDE com info pessoal
+.idea/
+.vscode/settings.json
+.vscode/launch.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+*.tmp
+appium*.log
+chromedriver*.log
+geckodriver*.log
+
+# Cobertura de teste
+coverage/
+.nyc_output/

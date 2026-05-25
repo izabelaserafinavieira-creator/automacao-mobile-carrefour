@@ -1,0 +1,15 @@
+{
+    "registrationScenarios": [
+        {
+            "description": "cadastro com dados válidos",
+            "credentialsFrom": "env",
+            "expectedResult": "success"
+        },
+        {
+            "description": "cadastro com senhas diferentes",
+            "credentialsFrom": "mismatchUser",
+            "expectedResult": "error",
+            "expectedMessage": "Password fields don't match"
+        }
+    ]
+}

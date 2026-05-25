@@ -1,0 +1,151 @@
+name: Mobile Tests
+
+# Pipeline de automação mobile no BrowserStack (Android).
+# Jobs rodam em sequência via `needs`; publish só dispara em
+# main/master (GitHub Pages só faz sentido na branch default).
+#
+# Secrets necessários: BROWSERSTACK_USERNAME, BROWSERSTACK_ACCESS_KEY
+# Var opcional: BROWSERSTACK_APP_ANDROID (pula o upload se já definido)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# Default mínimo (leitura). O job `publish` faz override e pede pages: write
+# pra fazer deploy no GitHub Pages.
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '18'
+  NATIVE_DEMO_APP_VERSION: 'v2.2.0'
+
+jobs:
+  install:
+    name: Instalar dependências
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci --prefer-offline --no-audit --no-fund
+
+  upload-android:
+    name: Upload APK ao BrowserStack
+    needs: install
+    runs-on: ubuntu-latest
+    if: ${{ vars.BROWSERSTACK_APP_ANDROID == '' || vars.BROWSERSTACK_APP_ANDROID == null }}
+    outputs:
+      app_url: ${{ steps.upload.outputs.app_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Baixar APK e enviar ao BrowserStack
+        id: upload
+        run: |
+          # Se o repositório não versiona o APK (apps/ está no .gitignore),
+          # baixamos a release oficial do native-demo-app antes do upload.
+          if [ ! -f "apps/Android-NativeDemoApp.apk" ]; then
+            mkdir -p apps
+            curl -L -o apps/Android-NativeDemoApp.apk \
+              "https://github.com/webdriverio/native-demo-app/releases/download/${NATIVE_DEMO_APP_VERSION}/android.wdio.native.app.${NATIVE_DEMO_APP_VERSION}.apk"
+          fi
+          RESPONSE=$(curl -s -u "$BROWSERSTACK_USERNAME:$BROWSERSTACK_ACCESS_KEY" \
+            -X POST "https://api-cloud.browserstack.com/app-automate/upload" \
+            -F "file=@apps/Android-NativeDemoApp.apk")
+          APP_URL=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['app_url'])")
+          # Mascara a URL bs:// nos logs (identifica o build no BS).
+          echo "::add-mask::$APP_URL"
+          echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+          echo "Upload Android concluído"
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+
+  test-android:
+    name: Testes Android (BrowserStack)
+    needs: [install, upload-android]
+    if: always() && needs.install.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      - run: npm ci --prefer-offline --no-audit --no-fund
+      - name: Rodar testes Android
+        run: npm run test:browserstack
+        env:
+          BROWSERSTACK_USERNAME: ${{ secrets.BROWSERSTACK_USERNAME }}
+          BROWSERSTACK_ACCESS_KEY: ${{ secrets.BROWSERSTACK_ACCESS_KEY }}
+          BROWSERSTACK_APP_ANDROID: ${{ needs.upload-android.outputs.app_url || vars.BROWSERSTACK_APP_ANDROID }}
+      - name: Subir resultados Allure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
+          retention-days: 7
+      - name: Subir screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: test/evidence/screenshots/
+          retention-days: 30
+
+  report:
+    name: Gerar relatório Allure
+    needs: test-android
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Baixar resultados Allure
+        uses: actions/download-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results/
+        continue-on-error: true
+      - name: Instalar Allure CLI
+        run: npm install -g allure-commandline --silent
+      - name: Gerar HTML
+        run: allure generate allure-results --clean --output allure-report
+      - name: Subir relatório
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-report
+          path: allure-report/
+          retention-days: 30
+
+  publish:
+    name: Publicar no GitHub Pages
+    needs: report
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: allure-report
+          path: ./public
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+      - id: deployment
+        uses: actions/deploy-pages@v4
