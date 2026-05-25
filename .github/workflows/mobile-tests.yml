@@ -37,7 +37,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm ci --prefer-offline --no-audit --no-fund
+      # 'npm install' (em vez de npm ci) tolera lock gerado em outro
+      # SO/versão de Node. Necessário porque o lock é regenerado
+      # localmente em Windows + Node 24, mas o CI roda em Ubuntu +
+      # Node 20 — npm ci é estrito demais nessa diferença.
+      - run: npm install --legacy-peer-deps --no-audit --no-fund
 
   upload-android:
     name: Upload APK ao BrowserStack
@@ -81,7 +85,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-      - run: npm ci --prefer-offline --no-audit --no-fund
+      # 'npm install' (em vez de npm ci) tolera lock gerado em outro
+      # SO/versão de Node. Necessário porque o lock é regenerado
+      # localmente em Windows + Node 24, mas o CI roda em Ubuntu +
+      # Node 20 — npm ci é estrito demais nessa diferença.
+      - run: npm install --legacy-peer-deps --no-audit --no-fund
       - name: Rodar testes Android
         run: npm run test:browserstack
         env:
