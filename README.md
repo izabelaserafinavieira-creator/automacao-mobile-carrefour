@@ -333,7 +333,6 @@ Em **Settings > Secrets and variables > Actions**, configura:
 - Secrets: `BROWSERSTACK_USERNAME`, `BROWSERSTACK_ACCESS_KEY`
 - Variable (opcional): `BROWSERSTACK_APP_ANDROID` — URL `bs://` do APK
 
-Para o GitHub Pages, em **Settings > Pages > Source**, seleciona **GitHub Actions**. URL final: `https://<owner>.github.io/<repo>`.
 
 ---
 
