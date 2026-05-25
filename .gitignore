@@ -7,7 +7,6 @@ node_modules/
 *.local.json
 secrets.json
 credentials.json
-.npmrc
 
 # Certificados e chaves de assinatura
 *.keystore

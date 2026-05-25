@@ -20,8 +20,12 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '20'
   NATIVE_DEMO_APP_VERSION: 'v2.2.0'
+  # Suprime o warning de Node 20 das GitHub Actions oficiais e força
+  # o runtime já no Node 24, alinhando com a transição prevista pra
+  # junho/2026 (https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
   install:
