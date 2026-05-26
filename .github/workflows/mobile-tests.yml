@@ -151,7 +151,16 @@ jobs:
           path: allure-results/
         continue-on-error: true
       - name: Instalar Allure CLI
-        run: npm install -g allure-commandline --silent
+        # Baixa direto do GitHub Releases pra evitar o mirror Azure usado
+        # pelo pacote npm `allure-commandline`, que vinha falhando com
+        # "PublicAccessNotPermitted" no post-install.
+        run: |
+          ALLURE_VERSION=2.29.0
+          curl -fsSL -o /tmp/allure.tgz \
+            "https://github.com/allure-framework/allure2/releases/download/${ALLURE_VERSION}/allure-${ALLURE_VERSION}.tgz"
+          sudo tar -xzf /tmp/allure.tgz -C /opt/
+          sudo ln -sf "/opt/allure-${ALLURE_VERSION}/bin/allure" /usr/local/bin/allure
+          allure --version
       - name: Gerar HTML
         run: allure generate allure-results --clean --output allure-report
       - name: Subir relatório
